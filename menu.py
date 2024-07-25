@@ -5,16 +5,16 @@ from PyQt5.QtCore import Qt
 def create_menus(parent, menubar):
     file_menu = menubar.addMenu('File')
     
-    open_file_action = QAction('Open File', parent)
-    open_file_action.setShortcut('Ctrl+O')
+    open_file_action = create_action(parent, 'Open File', 'Ctrl+O', icon='icons/menu/Open.png')
     open_file_action.triggered.connect(parent.open_file)
     file_menu.addAction(open_file_action)
-    
-    exit_action = QAction('Exit', parent)
+
+    exit_action = create_action(parent, 'Exit', 'Ctrl+Q', icon='icons/menu/Exit.png')
     exit_action.setShortcut('Ctrl+Q')
     exit_action.triggered.connect(parent.close)
     file_menu.addAction(exit_action)
-    
+
+    file_menu.addSeparator()
     recent_files_menu = QMenu('Recent Imported Files', parent)
     file_menu.addMenu(recent_files_menu)
     

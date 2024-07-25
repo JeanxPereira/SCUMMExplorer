@@ -11,7 +11,6 @@ def read_la_file(filepath):
         block_type = content[offset:offset + 4].decode('ascii', errors='ignore')
         block_size = struct.unpack('>I', content[offset + 4:offset + 8])[0]
 
-        # Check if block_size is reasonable
         if block_size <= 8 or block_size > len(content) - offset:
             print(f"Warning: Skipping potentially corrupted block {block_type} with size {block_size}")
             break
@@ -24,7 +23,6 @@ def read_la_file(filepath):
             'data': block_data
         }
 
-        # Handle LECF sub-blocks
         if block_type == 'LECF':
             block['sub_blocks'] = read_lecf_sub_blocks(block_data)
 
@@ -44,26 +42,22 @@ def read_lecf_sub_blocks(data):
         sub_block_type = data[offset:offset + 4].decode('ascii', errors='ignore')
         sub_block_size = struct.unpack('>I', data[offset + 4:offset + 8])[0]
 
-        # Check if sub_block_size is reasonable
         if sub_block_size <= 8 or sub_block_size > len(data) - offset:
-            print(f"Warning: Skipping potentially corrupted sub-block {sub_block_type} com tamanho {sub_block_size}")
+            print(f"Warning: Skipping potentially corrupted sub-block {sub_block_type} with size {sub_block_size}")
             break
 
         sub_block_data = data[offset + 8:offset + sub_block_size]
 
-        if sub_block_type == 'LFLF':
-            sub_blocks.append({
-                'type': sub_block_type,
-                'size': sub_block_size,
-                'sub_blocks': read_lflf_chunks(sub_block_data)
-            })
-        else:
-            sub_blocks.append({
-                'type': sub_block_type,
-                'size': sub_block_size,
-                'data': sub_block_data
-            })
+        sub_block = {
+            'type': sub_block_type,
+            'size': sub_block_size,
+            'data': sub_block_data
+        }
 
+        if sub_block_type == 'LFLF':
+            sub_block['chunks'] = read_lflf_chunks(sub_block_data)
+
+        sub_blocks.append(sub_block)
         offset += sub_block_size
 
     return sub_blocks
@@ -77,14 +71,13 @@ def read_lflf_chunks(data):
             break
 
         chunk_type = data[offset:offset + 4].decode('ascii', errors='ignore')
-        chunk_size = struct.unpack('<I', data[offset + 4:offset + 8])[0]
+        chunk_size = struct.unpack('>I', data[offset + 4:offset + 8])[0]
 
-        # Ensure chunk_size is reasonable
-        if chunk_size <= 0 or chunk_size > len(data) - offset - 8:
+        if chunk_size <= 8 or chunk_size > len(data) - offset:
             print(f"Warning: Skipping potentially corrupted chunk {chunk_type} with size {chunk_size}")
             break
 
-        chunk_data = data[offset + 8:offset + 8 + chunk_size]
+        chunk_data = data[offset + 8:offset + chunk_size]
 
         chunk = {
             'type': chunk_type,
@@ -93,84 +86,67 @@ def read_lflf_chunks(data):
         }
 
         if chunk_type == 'ROOM':
-            chunk['details'] = read_room_chunk(chunk_data)
-        elif chunk_type == 'RMSC':
-            chunk['details'] = read_rmsc_chunk(chunk_data)
-        elif chunk_type == 'SCRP':
-            chunk['details'] = read_scrp_chunk(chunk_data)
-        elif chunk_type == 'SOUN':
-            chunk['details'] = read_soun_chunk(chunk_data)
-        elif chunk_type == 'AKOS':
-            chunk['details'] = read_akos_chunk(chunk_data)
+            chunk['details'] = read_room_details(chunk_data)
 
         chunks.append(chunk)
-        offset += 8 + chunk_size
+        offset += chunk_size
 
     return chunks
 
-def read_room_chunk(data):
-    room = {
-        'type': 'ROOM',
-        'size': len(data),
-        'layers': [],
-        'objects': []
+def read_room_details(data):
+    header_format = '<HHHHHHHHHHBBBH'
+    header_size = struct.calcsize(header_format)
+    if len(data) < header_size:
+        print("Warning: Room header is too short, skipping room details.")
+        return {}
+
+    header = struct.unpack(header_format, data[:header_size])
+
+    room_details = {
+        'room_size': header[0],
+        'unknown1': header[1],
+        'room_width': header[2],
+        'room_height': header[3],
+        'unknown2': header[4],
+        'tileset_offset': header[5],
+        'attribute_table_offset': header[6],
+        'mask_offset': header[7],
+        'unknown3': header[8],
+        'unknown4': header[9],
+        'num_objects': header[10],
+        'num_boxes_offset': header[11],
+        'num_sounds': header[12],
+        'num_scripts': header[13],
+        'exit_script_offset': header[14] if len(header) > 14 else None,
+        'entry_script_offset': header[15] if len(header) > 15 else None,
     }
-    
-    # Parsing ROOM chunk specific data
-    offset = 0
+
+    sub_blocks = []
+    offset = header_size
     while offset < len(data):
         if offset + 8 > len(data):
             break
-        layer_type = data[offset:offset + 4].decode('ascii', errors='ignore')
-        layer_size = struct.unpack('<I', data[offset + 4:offset + 8])[0]
 
-        if layer_size <= 0 or layer_size > len(data) - offset - 8:
-            print(f"Warning: Skipping potentially corrupted layer {layer_type} with size {layer_size}")
+        sub_block_type = data[offset:offset + 4].decode('ascii', errors='ignore')
+        sub_block_size = struct.unpack('>I', data[offset + 4:offset + 8])[0]
+
+        if sub_block_size <= 8 or sub_block_size > len(data) - offset:
+            print(f"Warning: Skipping potentially corrupted sub-block {sub_block_type} with size {sub_block_size}")
             break
 
-        layer_data = data[offset + 8:offset + 8 + layer_size]
+        sub_block_data = data[offset + 8:offset + sub_block_size]
 
-        room['layers'].append({
-            'type': layer_type,
-            'size': layer_size,
-            'data': layer_data
-        })
+        sub_block = {
+            'type': sub_block_type,
+            'size': sub_block_size,
+            'data': sub_block_data
+        }
 
-        offset += 8 + layer_size
+        sub_blocks.append(sub_block)
+        offset += sub_block_size
 
-    return room
-
-def read_rmsc_chunk(data):
-    rmsc = {
-        'type': 'RMSC',
-        'size': len(data),
-        # Adicione outros detalhes específicos para RMSC aqui
-    }
-    return rmsc
-
-def read_scrp_chunk(data):
-    scrp = {
-        'type': 'SCRP',
-        'size': len(data),
-        # Adicione outros detalhes específicos para SCRP aqui
-    }
-    return scrp
-
-def read_soun_chunk(data):
-    soun = {
-        'type': 'SOUN',
-        'size': len(data),
-        # Adicione outros detalhes específicos para SOUN aqui
-    }
-    return soun
-
-def read_akos_chunk(data):
-    akos = {
-        'type': 'AKOS',
-        'size': len(data),
-        # Adicione outros detalhes específicos para AKOS aqui
-    }
-    return akos
+    room_details['sub_blocks'] = sub_blocks
+    return room_details
 
 # Exemplo de uso
 if __name__ == "__main__":
@@ -182,9 +158,18 @@ if __name__ == "__main__":
                 print(f"  Sub Block Type: {sub_block['type']}, Sub Block Size: {sub_block['size']}")
                 if sub_block['type'] == 'LFLF':
                     print("    LFLF block found")
-                    for chunk in sub_block['sub_blocks']:
+                    for chunk in sub_block['chunks']:
                         print(f"    Chunk Type: {chunk['type']}, Chunk Size: {chunk['size']}")
                         if chunk['type'] == 'ROOM':
-                            print(f"    ROOM chunk with {len(chunk['details']['layers'])} layers")
-                        else:
-                            print(f"    Data Sample: {chunk['data'][:20]}...")
+                            room_details = chunk['details']
+                            print(f"      Room Size: {room_details.get('room_size')}")
+                            print(f"      Room Width: {room_details.get('room_width')}")
+                            print(f"      Room Height: {room_details.get('room_height')}")
+                            print(f"      Number of Objects: {room_details.get('num_objects')}")
+                            print(f"      Number of Boxes Offset: {room_details.get('num_boxes_offset')}")
+                            print(f"      Number of Sounds: {room_details.get('num_sounds')}")
+                            print(f"      Number of Scripts: {room_details.get('num_scripts')}")
+                            print(f"      Exit Script Offset: {room_details.get('exit_script_offset')}")
+                            print(f"      Entry Script Offset: {room_details.get('entry_script_offset')}")
+                            for sub_block in room_details.get('sub_blocks', []):
+                                print(f"        Sub Block Type: {sub_block['type']}, Sub Block Size: {sub_block['size']}")

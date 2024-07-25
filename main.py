@@ -1,7 +1,8 @@
 import sys
 import json
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QFileDialog, QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
-                             QTabWidget, QLabel, QMenuBar, QStatusBar, QSplitter, QFormLayout, QLineEdit, QFrame, QDesktopWidget)
+import os
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QFileDialog, QTreeWidgetItem, QWidget, QVBoxLayout,
+                             QTabWidget, QMenuBar, QStatusBar, QSplitter, QFormLayout, QLineEdit, QDesktopWidget)
 from PyQt5.QtCore import Qt
 from menu import create_menus
 from widgets import create_main_widget
@@ -46,10 +47,11 @@ class ScummRevisitedApp(QMainWindow):
         self.file_view.currentItemChanged.connect(self.on_item_clicked)
 
     def center(self):
-        screen = QDesktopWidget().screenGeometry()
+        screen = QApplication.primaryScreen().geometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) // 2,
-                  (screen.height() - size.height()) // 2)
+                (screen.height() - size.height()) // 2)
+
         
     def create_informer_widget(self):
         tab_widget = QTabWidget()
@@ -89,7 +91,7 @@ class ScummRevisitedApp(QMainWindow):
         directory = self.settings.get("last_open_directory", "")
         file_name, _ = QFileDialog.getOpenFileName(self, "Open LA File", directory, "LA Files (*.LA0 *.LA1 *.LA2);;All Files (*)", options=options)
         if file_name:
-            self.settings["last_open_directory"] = directory
+            self.settings["last_open_directory"] = os.path.dirname(file_name)  # Update directory
             self.update_recent_files(file_name)
             self.save_settings()
             self.populate_tree(file_name)
@@ -128,12 +130,19 @@ class ScummRevisitedApp(QMainWindow):
         try:
             with open(SETTINGS_FILE, 'r') as file:
                 return json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
+            return {"last_open_directory": "", "recent_files": []}
+        except json.JSONDecodeError:
+            print("Error decoding JSON from settings file.")
             return {"last_open_directory": "", "recent_files": []}
 
+
     def save_settings(self):
-        with open(SETTINGS_FILE, 'w') as file:
-            json.dump(self.settings, file)
+        try:
+            with open(SETTINGS_FILE, 'w') as file:
+                json.dump(self.settings, file)
+        except IOError:
+            print("Error saving settings.")
 
     def update_recent_files(self, file_name):
         recent_files = self.settings.get("recent_files", [])
