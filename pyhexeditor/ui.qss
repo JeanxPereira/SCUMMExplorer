@@ -1,0 +1,79 @@
+QMenu::item {
+    background-color: #0f0f0f;
+    color: white;
+    padding: 4px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #4f4f4f;
+    border-radius: 2px;
+}
+
+/* VERTICAL SCROLLBAR  */
+QScrollBar:vertical {
+  border: 1px;
+  border-color: #ffffff;
+  background-color: #4f4f4f;
+  width: 9px;
+  margin: 15px 0 15px 0;
+  border-radius: 3px;
+}
+/* /HANDLE BAR VERTICAL */
+QScrollBar::handle:vertical {
+  background-color: #4f4f4f;
+  border-radius: 3px;
+  min-height: 30px
+}
+
+QScrollBar::handle:vertical:hover{
+  background-color: #686868;
+}
+
+QScrollBar::handle:vertical:pressed {
+  background-color: #828282;
+}
+
+/* BTN TOP-SCROLLBAR */
+QScrollBar::sub-line:vertical {
+  border: none;
+  background-color: #4f4f4f;
+  height: 15px;
+  border-top-left-radius: 1px;
+  border-top-right-radius: 1px;
+  subcontrol-position: top;
+  subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:vertical:hover {
+  background-color: #686868;
+}
+
+QScrollBar::sub-line:vertical:pressed{
+  background-color: #828282;
+}
+
+/* BTN BOTTOM - SCROLLBAR */
+QScrollBar::add-line:vertical {
+  border: none;
+  background-color: #4f4f4f;
+  height: 15px;
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+  subcontrol-position: bottom;
+  subcontrol-origin: margin;
+}
+
+QScrollBar::add-line:vertical:hover {
+  background-color: #686868;
+}
+QScrollBar::add-line:vertical:pressed {
+  background-color: #828282;
+}
+
+/* RESET ARROW */
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
+background: none;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+background: none;
+}
